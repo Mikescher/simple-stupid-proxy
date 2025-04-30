@@ -1,68 +1,68 @@
-.PHONY: all build run docker-build docker-run tidy fmt clean help
+DOCKER_REPO=hub.docker.com
+DOCKER_NAME=mikescher/simple-stupid-proxy
 
-# Variables
-APP_NAME=go-proxy
-BINARY_NAME=proxy
-DOCKER_IMAGE_NAME=go-proxy
-GO_FILES=$(wildcard *.go)
-# Default auth key for local run - CHANGE THIS OR USE ENV VAR
-DEFAULT_AUTH_KEY=changeme_in_makefile_or_env
+NAMESPACE=$(shell git rev-parse --abbrev-ref HEAD)
+HASH=$(shell git rev-parse HEAD)
 
-# Default target
-all: tidy fmt build
+.PHONY: run build fmt dgi test lint clean swagger docker push run-docker-local inspect-docker
 
-# Build the Go application
-build: $(GO_FILES) go.mod
-	@echo "Building $(APP_NAME)..."
-	@go build -o $(BINARY_NAME) main.go
-	@echo "$(APP_NAME) built successfully."
-
-# Run the Go application locally
-# Requires PROXY_AUTH_KEY to be set in the environment or uses DEFAULT_AUTH_KEY
 run: build
-	@echo "Running $(APP_NAME)... (Using auth key: $(or $(PROXY_AUTH_KEY), $(DEFAULT_AUTH_KEY)))"
-	@PROXY_AUTH_KEY=$(or $(PROXY_AUTH_KEY), $(DEFAULT_AUTH_KEY)) ./$(BINARY_NAME)
+	mkdir -p _run-data
+	_build/server
 
-# Build the Docker image
-docker-build:
-	@echo "Building Docker image $(DOCKER_IMAGE_NAME)..."
-	@docker build -t $(DOCKER_IMAGE_NAME) .
-	@echo "Docker image $(DOCKER_IMAGE_NAME) built."
+build: fmt
+	mkdir -p _build
+	rm -f ./_build/server
+	go build -v -buildvcs=false  -o _build/server ./cmd/server
 
-# Run the application inside a Docker container
-# Requires PROXY_AUTH_KEY to be set in the environment or uses DEFAULT_AUTH_KEY
-docker-run: docker-build
-	@echo "Running $(APP_NAME) in Docker... (Using auth key: $(or $(PROXY_AUTH_KEY), $(DEFAULT_AUTH_KEY)))"
-	@docker run --rm -p 8080:8080 -e PORT=8080 -e PROXY_AUTH_KEY=$(or $(PROXY_AUTH_KEY), $(DEFAULT_AUTH_KEY)) $(DOCKER_IMAGE_NAME)
-
-# Tidy Go modules
-tidy:
-	@echo "Running go mod tidy..."
-	@go mod tidy
-
-# Format Go code
 fmt:
-	@echo "Running go fmt..."
-	@go fmt ./...
+	go fmt ./...
 
-# Clean build artifacts
 clean:
-	@echo "Cleaning up..."
-	@rm -f $(BINARY_NAME)
-	@echo "Cleanup complete."
+	rm -rf _build/*
+	git clean -fdx --exclude=./config
+	! which go 2>&1 >> /dev/null || go clean
+	! which go 2>&1 >> /dev/null || go clean -testcache
 
-# Display help message
-help:
-	@echo "Available targets:"
-	@echo "  all          : Format, tidy modules, and build the application (default)"
-	@echo "  build        : Build the Go application"
-	@echo "  run          : Run the application locally (set PROXY_AUTH_KEY env var or modify Makefile)"
-	@echo "  docker-build : Build the Docker image"
-	@echo "  docker-run   : Run the application in a Docker container (set PROXY_AUTH_KEY env var or modify Makefile)"
-	@echo "  tidy         : Tidy Go modules"
-	@echo "  fmt          : Format Go code"
-	@echo "  clean        : Remove build artifacts"
-	@echo "  help         : Show this help message"
+push:
+	docker image push "$(DOCKER_REPO)/$(DOCKER_NAME):$(HASH)"
+	docker image push "$(DOCKER_REPO)/$(DOCKER_NAME):$(NAMESPACE)-latest"
+	docker image push "$(DOCKER_REPO)/$(DOCKER_NAME):latest"
 
-# Prevent Make from thinking files named 'build', 'run', etc. are actual targets
-.PHONY: all build run docker-build docker-run tidy fmt clean help
+dgi:
+	[ ! -f "DOCKER_GIT_INFO" ] || rm DOCKER_GIT_INFO
+	echo -n "VCSTYPE="     >> DOCKER_GIT_INFO ; echo "git"                         >> DOCKER_GIT_INFO
+	echo -n "BRANCH="      >> DOCKER_GIT_INFO ; git rev-parse --abbrev-ref HEAD    >> DOCKER_GIT_INFO
+	echo -n "HASH="        >> DOCKER_GIT_INFO ; git rev-parse              HEAD    >> DOCKER_GIT_INFO
+	echo -n "COMMITTIME="  >> DOCKER_GIT_INFO ; git log -1 --format=%cd --date=iso >> DOCKER_GIT_INFO
+	echo -n "REMOTE="      >> DOCKER_GIT_INFO ; git config --get remote.origin.url >> DOCKER_GIT_INFO
+
+docker: dgi
+	docker build \
+    		-t "$(DOCKER_NAME):$(HASH)" \
+    		-t "$(DOCKER_NAME):$(NAMESPACE)-latest" \
+    		-t "$(DOCKER_NAME):latest" \
+    		-t "$(DOCKER_REPO)/$(DOCKER_NAME):$(HASH)" \
+    		-t "$(DOCKER_REPO)/$(DOCKER_NAME):$(NAMESPACE)-latest" \
+    		-t "$(DOCKER_REPO)/$(DOCKER_NAME):latest" \
+    		.
+
+run-interactive:
+	docker build -t $(DOCKER_NAME)/local -f DockerfileLocal .
+	docker run -d --rm -p 8080:80 -v $(shell pwd):/src $(DOCKER_NAME)/local
+
+run-docker-local: docker
+	mkdir -p _run-data
+	docker run --rm \
+	           --init \
+			   --volume "$(shell pwd)/_run-data/docker-local:/data" \
+			   --publish "8080:80" \
+			   $(DOCKER_NAME):latest
+
+inspect-docker: docker
+	mkdir -p _run-data
+	docker run -ti \
+	           --rm \
+	           --volume "$(shell pwd)/_run-data/docker-inspect:/data" \
+	           $(DOCKER_NAME):latest \
+	           bash

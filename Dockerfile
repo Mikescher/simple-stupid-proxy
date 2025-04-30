@@ -1,5 +1,5 @@
 # Stage 1: Build the application
-FROM golang:1.21-alpine AS builder
+FROM golang:1-alpine AS builder
 
 WORKDIR /app
 
@@ -23,12 +23,5 @@ WORKDIR /app
 # Copy the binary from the builder stage
 COPY --from=builder /proxy /app/proxy
 
-# Expose the port the application runs on
-EXPOSE 8080
-
 # Set the entrypoint command
 ENTRYPOINT ["/app/proxy"]
-
-# Optional: Add metadata labels
-LABEL maintainer="Your Name <your.email@example.com>"
-LABEL description="Simple Go HTTP Proxy"
