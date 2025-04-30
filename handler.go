@@ -1,4 +1,4 @@
-package main
+package ssp
 
 import (
 	"fmt"
@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-// proxyHandler forwards the request to the target URL.
-func proxyHandler(c *gin.Context) {
+// ProxyHandler forwards the request to the target URL.
+func ProxyHandler(c *gin.Context) {
 	targetPath := c.Param("proxyPath")
 	if targetPath == "" {
 		log.Error().Msg("proxyPath parameter is empty")

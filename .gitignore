@@ -1,1 +1,8 @@
 .aider*
+DOCKER_GIT_INFO
+
+_build
+_run-data
+
+# Visual Studio Code
+.vscode/*

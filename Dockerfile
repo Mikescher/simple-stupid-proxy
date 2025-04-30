@@ -12,8 +12,7 @@ COPY . .
 
 # Build the application
 # CGO_ENABLED=0 produces a statically linked binary
-# -ldflags="-s -w" strips debug information and symbols to reduce binary size
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /proxy main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /proxy './cmd/server'
 
 # Stage 2: Create the final lightweight image
 FROM alpine:latest

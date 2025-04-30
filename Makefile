@@ -1,4 +1,4 @@
-DOCKER_REPO=hub.docker.com
+DOCKER_REPO=registry.blackforestbytes.com
 DOCKER_NAME=mikescher/simple-stupid-proxy
 
 NAMESPACE=$(shell git rev-parse --abbrev-ref HEAD)
@@ -24,10 +24,15 @@ clean:
 	! which go 2>&1 >> /dev/null || go clean
 	! which go 2>&1 >> /dev/null || go clean -testcache
 
-push:
+push-bfb:
 	docker image push "$(DOCKER_REPO)/$(DOCKER_NAME):$(HASH)"
 	docker image push "$(DOCKER_REPO)/$(DOCKER_NAME):$(NAMESPACE)-latest"
 	docker image push "$(DOCKER_REPO)/$(DOCKER_NAME):latest"
+
+push-pub:
+	docker image push "$(DOCKER_NAME):$(HASH)"
+	docker image push "$(DOCKER_NAME):$(NAMESPACE)-latest"
+	docker image push "$(DOCKER_NAME):latest"
 
 dgi:
 	[ ! -f "DOCKER_GIT_INFO" ] || rm DOCKER_GIT_INFO

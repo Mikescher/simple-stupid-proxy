@@ -1,4 +1,4 @@
-package main
+package ssp
 
 import (
 	"github.com/rs/zerolog"
@@ -9,12 +9,12 @@ import (
 
 var expectedAuthKey string
 
-func setupLogger() {
+func SetupLogger() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
 }
 
-func loadConfig() {
+func LoadConfig() {
 	expectedAuthKey = os.Getenv("PROXY_AUTH_KEY")
 	if expectedAuthKey == "" {
 		log.Fatal().Msg("PROXY_AUTH_KEY environment variable not set")
